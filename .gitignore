@@ -13,8 +13,8 @@ venv/
 env/
 .venv/
 
-# Model files (large binaries)
-backend/model/*.pkl
+# Model files (uncomment to exclude large binaries)
+# backend/model/*.pkl
 
 # IDE
 .vscode/
