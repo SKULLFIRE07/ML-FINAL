@@ -594,6 +594,43 @@
 
     .error-msg.show { display: block; animation: fadeUp 0.3s var(--ease); }
 
+    /* Input vs Processed comparison */
+    .image-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .compare-box {
+      text-align: center;
+    }
+
+    .compare-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+
+    .compare-img {
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 120px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: #000;
+      image-rendering: pixelated;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .compare-box.input-box .compare-img {
+      image-rendering: auto;
+    }
+
     /* History */
     .history-section {
       margin-top: 24px;
@@ -1012,6 +1049,18 @@
 
           <!-- Results -->
           <div class="results-content" id="results-content">
+            <!-- Image comparison: what you drew vs what model sees -->
+            <div class="image-compare">
+              <div class="compare-box input-box">
+                <div class="compare-label">Your Drawing</div>
+                <img class="compare-img" id="input-preview" alt="Input">
+              </div>
+              <div class="compare-box">
+                <div class="compare-label">Model Sees (28x28)</div>
+                <img class="compare-img" id="processed-preview" alt="Processed">
+              </div>
+            </div>
+
             <div class="digit-display">
               <div class="digit-big" id="digit-big">0</div>
               <div class="confidence-row">
@@ -1340,10 +1389,19 @@
       setTimeout(() => errorMsg.classList.remove('show'), 5000);
     }
 
-    function displayResults(digit, confidence, probabilities) {
+    function displayResults(digit, confidence, probabilities, processedImage) {
       placeholder.style.display = 'none';
       resultsContent.style.display = 'flex';
       errorMsg.classList.remove('show');
+
+      // Show input drawing preview
+      const inputPreview = document.getElementById('input-preview');
+      inputPreview.src = canvas.toDataURL('image/png');
+
+      // Show processed 28x28 image (what the model actually sees)
+      if (processedImage) {
+        document.getElementById('processed-preview').src = 'data:image/png;base64,' + processedImage;
+      }
 
       // Big digit
       const digitEl = document.getElementById('digit-big');
@@ -1411,7 +1469,7 @@
         if (!res.ok) throw new Error(`Server error ${res.status}`);
 
         const data = await res.json();
-        displayResults(data.digit, data.confidence, data.probabilities);
+        displayResults(data.digit, data.confidence, data.probabilities, data.processed_image);
 
       } catch (err) {
         console.error('Prediction failed:', err);
