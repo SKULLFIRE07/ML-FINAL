@@ -20,7 +20,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="Digit Recognition API",
     description="KNN-based handwritten digit recognition trained on MNIST",
-    version="1.0.0",
+    version="1.0.1",
 )
 
 # CORS — allow all origins so the GitHub Pages frontend can call us
