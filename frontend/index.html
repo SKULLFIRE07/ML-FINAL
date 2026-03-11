@@ -635,16 +635,41 @@
     .history-section {
       margin-top: 24px;
       display: none;
+      animation: fadeUp 0.4s var(--ease);
     }
 
     .history-section.show { display: block; }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
 
     .history-label {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--text-muted);
-      margin-bottom: 10px;
+    }
+
+    .history-clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+
+    .history-clear-btn:hover {
+      color: var(--red);
+      border-color: rgba(248,113,113,0.3);
+      background: rgba(248,113,113,0.06);
     }
 
     .history-strip {
@@ -659,6 +684,19 @@
       overflow: hidden;
       border: 1px solid var(--border);
       position: relative;
+      animation: historyPop 0.3s var(--ease-spring);
+      will-change: transform;
+      transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+    }
+
+    .history-item:hover {
+      transform: scale(1.1);
+      border-color: var(--accent);
+    }
+
+    @keyframes historyPop {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
 
     .history-item canvas {
@@ -904,6 +942,18 @@
 
     .footer a:hover { text-decoration: underline; }
 
+    /* GPU-accelerated smooth animations */
+    .canvas-frame, .card, .btn, .tab-btn, .history-item, .prob-bar-fill, .confidence-bar-fill {
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+
+    .digit-big {
+      will-change: transform, opacity;
+    }
+
     /* ================================================================
        RESPONSIVE
        ================================================================ */
@@ -1081,7 +1131,10 @@
 
       <!-- History -->
       <div class="history-section" id="history-section">
-        <div class="history-label">Recent Predictions</div>
+        <div class="history-header">
+          <div class="history-label">Recent Predictions</div>
+          <button class="history-clear-btn" id="history-clear-btn">Clear History</button>
+        </div>
         <div class="history-strip" id="history-strip"></div>
       </div>
     </div>
@@ -1223,7 +1276,8 @@
 
     <!-- FOOTER -->
     <div class="footer">
-      <p>Built by <a href="https://github.com/SKULLFIRE07" target="_blank">SKULLFIRE07</a> &middot; <a href="https://github.com/SKULLFIRE07/ML-FINAL" target="_blank">Source Code</a></p>
+      <p>Built by <strong>Aryan Budukh</strong>, <strong>Prajwal Horti</strong>, <strong>Jinay Golecha</strong> &amp; <strong>Bhushan Charpe</strong></p>
+      <p style="margin-top: 6px;"><a href="https://github.com/SKULLFIRE07/ML-FINAL" target="_blank">Source Code on GitHub</a></p>
     </div>
 
   </div>
@@ -1517,6 +1571,14 @@
 
       section.classList.add('show');
     }
+
+    function clearHistory() {
+      history.length = 0;
+      document.getElementById('history-strip').innerHTML = '';
+      document.getElementById('history-section').classList.remove('show');
+    }
+
+    document.getElementById('history-clear-btn').addEventListener('click', clearHistory);
 
     // ================================================================
     // KEYBOARD SHORTCUTS
