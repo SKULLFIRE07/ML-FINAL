@@ -3,1270 +3,1036 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Digit Recognition AI</title>
+  <title>Neural Digit — AI Handwriting Recognition</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     /* ================================================================
-       RESET & CUSTOM PROPERTIES
+       RESET & DESIGN TOKENS
        ================================================================ */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-primary: #06060e;
-      --bg-card: rgba(255, 255, 255, 0.035);
-      --bg-card-hover: rgba(255, 255, 255, 0.06);
-      --border-card: rgba(255, 255, 255, 0.07);
-      --border-card-hover: rgba(255, 255, 255, 0.18);
-      --text-primary: #f0f0f5;
-      --text-secondary: rgba(240, 240, 245, 0.6);
-      --text-muted: rgba(240, 240, 245, 0.35);
-      --accent-1: #7c3aed;
-      --accent-2: #3b82f6;
-      --accent-3: #06b6d4;
-      --accent-4: #ec4899;
-      --gradient-main: linear-gradient(135deg, #7c3aed, #3b82f6, #06b6d4);
-      --gradient-warm: linear-gradient(135deg, #ec4899, #f59e0b);
-      --shadow-lg: 0 25px 60px -12px rgba(0, 0, 0, 0.6);
-      --shadow-glow: 0 0 50px rgba(124, 58, 237, 0.2);
-      --shadow-neon: 0 0 20px rgba(124, 58, 237, 0.5), 0 0 60px rgba(124, 58, 237, 0.2), 0 0 100px rgba(124, 58, 237, 0.1);
-      --radius: 20px;
-      --radius-sm: 12px;
-      --radius-xs: 8px;
-      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --transition-slow: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-      --noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      --bg: #0a0a0f;
+      --bg-elevated: #111118;
+      --bg-card: #16161f;
+      --bg-input: #1c1c28;
+      --border: rgba(255,255,255,0.06);
+      --border-hover: rgba(255,255,255,0.12);
+      --text: #eeeef0;
+      --text-dim: rgba(238,238,240,0.55);
+      --text-muted: rgba(238,238,240,0.3);
+      --accent: #6d5cff;
+      --accent-light: #8b7dff;
+      --accent-glow: rgba(109,92,255,0.25);
+      --green: #34d399;
+      --green-glow: rgba(52,211,153,0.2);
+      --red: #f87171;
+      --amber: #fbbf24;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Space Grotesk', system-ui, sans-serif;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
 
     /* ================================================================
-       ANIMATED GRADIENT MESH BACKGROUND
+       BACKGROUND
        ================================================================ */
-    .bg-mesh {
+    .bg-grid {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(109,92,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(109,92,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    .bg-glow {
+      position: fixed;
+      inset: 0;
       z-index: 0;
       pointer-events: none;
-      overflow: hidden;
     }
 
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      opacity: 0.5;
-      will-change: transform;
-    }
-
-    .blob-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(124, 58, 237, 0.35), transparent 70%);
-      top: -10%; left: -5%;
-      animation: blobMove1 25s ease-in-out infinite;
-    }
-    .blob-2 {
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent 70%);
-      top: 40%; right: -10%;
-      animation: blobMove2 30s ease-in-out infinite;
-    }
-    .blob-3 {
-      width: 450px; height: 450px;
-      background: radial-gradient(circle, rgba(6, 182, 212, 0.25), transparent 70%);
-      bottom: -5%; left: 30%;
-      animation: blobMove3 20s ease-in-out infinite;
-    }
-    .blob-4 {
-      width: 350px; height: 350px;
-      background: radial-gradient(circle, rgba(236, 72, 153, 0.2), transparent 70%);
-      top: 20%; left: 50%;
-      animation: blobMove4 35s ease-in-out infinite;
-    }
-    .blob-5 {
-      width: 300px; height: 300px;
-      background: radial-gradient(circle, rgba(245, 158, 11, 0.15), transparent 70%);
-      bottom: 20%; right: 20%;
-      animation: blobMove5 28s ease-in-out infinite;
-    }
-
-    @keyframes blobMove1 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      25% { transform: translate(100px, 80px) scale(1.1); }
-      50% { transform: translate(50px, 150px) scale(0.95); }
-      75% { transform: translate(-50px, 60px) scale(1.05); }
-    }
-    @keyframes blobMove2 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      25% { transform: translate(-120px, -60px) scale(1.15); }
-      50% { transform: translate(-60px, 100px) scale(0.9); }
-      75% { transform: translate(40px, -40px) scale(1.05); }
-    }
-    @keyframes blobMove3 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(80px, -100px) scale(1.1); }
-      66% { transform: translate(-60px, -50px) scale(0.95); }
-    }
-    @keyframes blobMove4 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      25% { transform: translate(-80px, 120px) scale(1.2); }
-      50% { transform: translate(60px, -80px) scale(0.85); }
-      75% { transform: translate(-40px, -40px) scale(1.1); }
-    }
-    @keyframes blobMove5 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(-100px, -60px) scale(1.15); }
-      66% { transform: translate(70px, 80px) scale(0.9); }
-    }
-
-    /* noise texture overlay */
-    .bg-mesh::after {
+    .bg-glow::before {
       content: '';
       position: absolute;
-      inset: 0;
-      background-image: var(--noise);
-      background-repeat: repeat;
-      opacity: 0.4;
+      top: -30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse, rgba(109,92,255,0.12) 0%, transparent 70%);
+    }
+
+    .bg-glow::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 70%);
     }
 
     /* ================================================================
        LAYOUT
        ================================================================ */
-    .container {
+    .app {
       position: relative;
       z-index: 1;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 0 24px;
+      padding: 24px 24px 60px;
     }
 
     /* ================================================================
-       HEADER
+       TOP BAR
        ================================================================ */
-    header {
-      text-align: center;
-      padding: 50px 0 20px;
-      position: relative;
-    }
-
-    .header-badge {
-      display: inline-flex;
+    .topbar {
+      display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 16px;
-      background: rgba(124, 58, 237, 0.12);
-      border: 1px solid rgba(124, 58, 237, 0.25);
-      border-radius: 100px;
-      font-size: 13px;
+      justify-content: space-between;
+      padding: 16px 0;
+      margin-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent), #34d399);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(52,211,153,0.08);
+      border: 1px solid rgba(52,211,153,0.15);
+      border-radius: 999px;
+      font-size: 12px;
       font-weight: 500;
-      color: #a78bfa;
-      margin-bottom: 20px;
-      animation: fadeInDown 0.8s ease;
+      color: var(--green);
+      font-family: var(--mono);
     }
 
-    .header-badge .dot {
-      width: 6px; height: 6px;
-      background: #22c55e;
+    .status-dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      animation: pulse-dot 2s ease-in-out infinite;
-      box-shadow: 0 0 6px #22c55e;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
     }
 
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.8); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
 
-    h1 {
-      font-size: clamp(2.2rem, 5vw, 3.8rem);
-      font-weight: 800;
-      line-height: 1.1;
+    /* ================================================================
+       HERO
+       ================================================================ */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 700;
       letter-spacing: -0.03em;
-      background: var(--gradient-main);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: fadeInUp 0.8s ease;
+      line-height: 1.1;
       margin-bottom: 12px;
     }
 
-    .subtitle {
-      font-size: clamp(0.95rem, 1.8vw, 1.15rem);
-      color: var(--text-secondary);
-      font-weight: 400;
-      max-width: 600px;
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--accent-light), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 520px;
       margin: 0 auto;
       line-height: 1.6;
-      animation: fadeInUp 0.8s ease 0.1s both;
-      min-height: 1.6em;
     }
 
-    .subtitle strong {
-      color: var(--text-primary);
-      font-weight: 600;
+    /* ================================================================
+       STATS ROW
+       ================================================================ */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 48px;
+      flex-wrap: wrap;
     }
 
-    .typing-cursor {
-      display: inline-block;
-      width: 2px;
-      height: 1em;
-      background: var(--accent-1);
-      margin-left: 2px;
-      animation: blink-cursor 0.8s step-end infinite;
-      vertical-align: text-bottom;
+    .stat {
+      text-align: center;
     }
 
-    @keyframes blink-cursor {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-value.accent { color: var(--accent-light); }
+    .stat-value.green { color: var(--green); }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
     }
 
     /* ================================================================
        TAB NAVIGATION
        ================================================================ */
-    .tab-nav {
+    .tabs {
       display: flex;
       justify-content: center;
       gap: 4px;
-      margin: 24px auto 32px;
+      margin-bottom: 36px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius);
       padding: 4px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 16px;
-      max-width: 440px;
-      animation: fadeInUp 0.8s ease 0.15s both;
-      position: relative;
+      border: 1px solid var(--border);
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .tab-btn {
-      flex: 1;
+      padding: 10px 24px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 8px;
-      padding: 12px 20px;
-      background: transparent;
-      border: none;
-      border-radius: 12px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: var(--transition);
-      position: relative;
-      z-index: 1;
-      outline: none;
     }
 
-    .tab-btn:hover {
-      color: var(--text-secondary);
-    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 
     .tab-btn.active {
-      color: var(--text-primary);
-      background: rgba(124, 58, 237, 0.15);
-      border: 1px solid rgba(124, 58, 237, 0.3);
-      box-shadow: 0 0 20px rgba(124, 58, 237, 0.15);
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 2px 12px var(--accent-glow);
     }
 
-    .tab-btn svg {
-      width: 16px; height: 16px;
-      flex-shrink: 0;
-    }
-
-    .tab-btn .tab-kbd {
+    .tab-btn kbd {
+      font-family: var(--mono);
       font-size: 10px;
-      padding: 1px 5px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 5px;
       border-radius: 4px;
-      font-weight: 500;
-      opacity: 0.5;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      line-height: 1;
     }
 
-    /* ================================================================
-       TAB PANELS
-       ================================================================ */
-    .tab-panel {
-      display: none;
-      animation: tabFadeIn 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    .tab-btn.active kbd {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.2);
     }
 
-    .tab-panel.active {
-      display: block;
-    }
+    .tab-panel { display: none; animation: fadeUp 0.4s var(--ease); }
+    .tab-panel.active { display: block; }
 
-    @keyframes tabFadeIn {
-      from { opacity: 0; transform: translateY(16px); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     /* ================================================================
-       GLASS CARD (ENHANCED)
+       PREDICT TAB — MAIN GRID
        ================================================================ */
-    .glass-card {
+    .predict-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .predict-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ================================================================
+       CARDS
+       ================================================================ */
+    .card {
       background: var(--bg-card);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--border-card);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 32px;
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-      transform-style: preserve-3d;
-      will-change: transform;
+      padding: 28px;
+      transition: border-color 0.3s var(--ease);
     }
 
-    /* noise texture on glass */
-    .glass-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: var(--noise);
-      background-repeat: repeat;
-      opacity: 0.3;
-      pointer-events: none;
-    }
+    .card:hover { border-color: var(--border-hover); }
 
-    /* top highlight */
-    .glass-card::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-      pointer-events: none;
-    }
-
-    .glass-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-card-hover);
-      box-shadow: var(--shadow-glow);
-    }
-
-    .glass-card.glow-purple:hover { box-shadow: 0 0 50px rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.3); }
-    .glass-card.glow-blue:hover { box-shadow: 0 0 50px rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.3); }
-    .glass-card.glow-cyan:hover { box-shadow: 0 0 50px rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.3); }
-    .glass-card.glow-pink:hover { box-shadow: 0 0 50px rgba(236, 72, 153, 0.2); border-color: rgba(236, 72, 153, 0.3); }
-
-    .card-title {
-      font-size: 14px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary);
-      margin-bottom: 24px;
+    .card-header {
       display: flex;
       align-items: center;
       gap: 10px;
-      position: relative;
-      z-index: 1;
+      margin-bottom: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
     }
 
-    .card-title svg { width: 18px; height: 18px; opacity: 0.6; }
+    .card-header svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--accent-light);
+    }
 
     /* ================================================================
-       TAB 1: PREDICT - CANVAS + RESULTS
+       CANVAS
        ================================================================ */
-    .predict-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 820px) {
-      .predict-grid { grid-template-columns: 1fr; }
-    }
-
-    .canvas-wrapper {
+    .canvas-area {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
-      position: relative;
-      z-index: 1;
+      gap: 16px;
     }
 
-    .canvas-container {
+    .canvas-frame {
       position: relative;
-      border-radius: 16px;
+      border-radius: var(--radius-sm);
       overflow: hidden;
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
-      border: 2px solid rgba(255,255,255,0.06);
-      transition: var(--transition);
-      cursor: none;
+      border: 2px solid var(--border);
+      transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+      cursor: crosshair;
     }
 
-    .canvas-container:hover {
-      border-color: rgba(124, 58, 237, 0.3);
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 0 30px rgba(124, 58, 237, 0.15);
+    .canvas-frame:hover,
+    .canvas-frame.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px var(--accent-glow);
     }
-
-    .canvas-container.drawing {
-      border-color: rgba(124, 58, 237, 0.5);
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 0 40px rgba(124, 58, 237, 0.25);
-      animation: canvasPulse 2s ease-in-out infinite;
-    }
-
-    @keyframes canvasPulse {
-      0%, 100% { box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 0 30px rgba(124, 58, 237, 0.2); }
-      50% { box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 0 50px rgba(124, 58, 237, 0.35); }
-    }
-
-    /* custom cursor */
-    .canvas-cursor {
-      position: fixed;
-      width: 20px; height: 20px;
-      border: 2px solid rgba(124, 58, 237, 0.8);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      transition: width 0.15s, height 0.15s, opacity 0.15s;
-      opacity: 0;
-      box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
-    }
-    .canvas-cursor.visible { opacity: 1; }
-    .canvas-cursor.drawing { width: 16px; height: 16px; background: rgba(124, 58, 237, 0.3); }
 
     #draw-canvas {
       display: block;
-      border-radius: 14px;
+      width: 280px;
+      height: 280px;
+      background: #fff;
       touch-action: none;
     }
 
     .canvas-hint {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-family: var(--mono);
     }
-    .canvas-hint svg { width: 14px; height: 14px; }
 
     .btn-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       width: 100%;
       max-width: 280px;
     }
 
-    /* Buttons */
     .btn {
-      display: inline-flex;
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 14px 24px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      outline: none;
-      position: relative;
-      overflow: hidden;
     }
-    .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .btn svg { width: 16px; height: 16px; }
+
+    .btn-ghost {
+      background: var(--bg-input);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-hover); }
 
     .btn-primary {
-      flex: 1;
-      background: linear-gradient(135deg, #7c3aed, #6366f1);
-      color: white;
-      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35);
-      animation: btnPulse 3s ease-in-out infinite;
-    }
-    @keyframes btnPulse {
-      0%, 100% { box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35); }
-      50% { box-shadow: 0 4px 30px rgba(124, 58, 237, 0.55); }
+      background: var(--accent);
+      color: #fff;
     }
 
     .btn-primary:hover {
-      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.5);
-      transform: translateY(-2px);
+      background: var(--accent-light);
+      box-shadow: 0 4px 20px var(--accent-glow);
+      transform: translateY(-1px);
     }
+
     .btn-primary:active { transform: translateY(0); }
 
-    .btn-primary::after {
+    .btn-primary.loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .btn-primary.loading::after {
       content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
-      opacity: 0;
-      transition: var(--transition);
-    }
-    .btn-primary:hover::after { opacity: 1; }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-secondary);
-    }
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      transform: translateY(-2px);
-    }
-    .btn-secondary:active { transform: translateY(0); }
-
-    .btn.loading .btn-text { visibility: hidden; }
-    .btn-spinner {
-      position: absolute;
-      width: 20px; height: 20px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: white;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
+      animation: spin 0.6s linear infinite;
     }
-    .btn.loading .btn-spinner { display: block; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Results Section */
-    .results-content {
+    /* ================================================================
+       RESULTS AREA
+       ================================================================ */
+    .results-area {
+      min-height: 380px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
-      position: relative;
-      z-index: 1;
     }
 
-    .result-hero {
+    .results-placeholder {
+      flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 24px;
-      opacity: 0;
-      transform: translateY(12px);
-      transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 40px 20px;
     }
-    .result-hero.visible { opacity: 1; transform: translateY(0); }
 
-    .predicted-digit {
-      font-size: 120px;
-      font-weight: 900;
+    .results-placeholder svg {
+      width: 48px;
+      height: 48px;
+      stroke: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .results-placeholder p {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .results-content {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Big digit display */
+    .digit-display {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .digit-big {
+      font-family: var(--mono);
+      font-size: 96px;
+      font-weight: 700;
       line-height: 1;
-      background: var(--gradient-main);
+      background: linear-gradient(135deg, var(--accent-light), var(--green));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      min-width: 100px;
-      text-align: center;
-      filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.4));
-      animation: none;
-      position: relative;
-    }
-    .predicted-digit.neon-glow {
-      animation: neonPulse 2s ease-in-out infinite;
-    }
-    @keyframes neonPulse {
-      0%, 100% { filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.4)) drop-shadow(0 0 40px rgba(59, 130, 246, 0.2)); }
-      50% { filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.6)) drop-shadow(0 0 60px rgba(59, 130, 246, 0.4)); }
+      animation: digitPop 0.4s var(--ease-spring);
     }
 
-    .confidence-ring-container {
-      position: relative;
-      width: 100px; height: 100px;
-      flex-shrink: 0;
+    @keyframes digitPop {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
 
-    .confidence-ring {
-      width: 100px; height: 100px;
-      transform: rotate(-90deg);
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
     }
-    .confidence-ring .bg {
-      fill: none;
-      stroke: rgba(255, 255, 255, 0.06);
-      stroke-width: 5;
+
+    .confidence-bar-bg {
+      width: 120px;
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 3px;
+      overflow: hidden;
     }
-    .confidence-ring .fg {
-      fill: none;
-      stroke: url(#ring-gradient);
-      stroke-width: 5;
-      stroke-linecap: round;
-      stroke-dasharray: 282.74;
-      stroke-dashoffset: 282.74;
-      transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
-      filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.5));
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.8s var(--ease);
+      width: 0%;
     }
 
     .confidence-text {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    /* Probability bars */
+    .prob-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .prob-row {
+      display: grid;
+      grid-template-columns: 20px 1fr 48px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .prob-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
       text-align: center;
     }
-    .confidence-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
-    .confidence-label { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
 
-    /* Bar Chart */
-    .chart-section {
-      opacity: 0; transform: translateY(12px);
-      transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s;
-    }
-    .chart-section.visible { opacity: 1; transform: translateY(0); }
-
-    .chart-title { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 14px; }
-
-    .chart-bars { display: flex; flex-direction: column; gap: 6px; }
-
-    .chart-row { display: flex; align-items: center; gap: 10px; }
-
-    .chart-label {
-      width: 18px; text-align: right; font-size: 13px;
-      font-weight: 600; color: var(--text-secondary);
-      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    .prob-bar-bg {
+      height: 8px;
+      background: var(--bg-input);
+      border-radius: 4px;
+      overflow: hidden;
     }
 
-    .chart-bar-bg {
-      flex: 1; height: 24px;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 6px; overflow: hidden;
-      position: relative;
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: rgba(109,92,255,0.4);
+      transition: width 0.6s var(--ease);
+      width: 0%;
     }
 
-    .chart-bar-fill {
-      height: 100%; border-radius: 6px;
-      background: linear-gradient(90deg, rgba(124, 58, 237, 0.4), rgba(99, 102, 241, 0.4));
-      width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-    }
-    .chart-bar-fill.winner {
-      background: linear-gradient(90deg, #7c3aed, #6366f1, #3b82f6);
-      box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+    .prob-bar-fill.winner {
+      background: linear-gradient(90deg, var(--accent), var(--green));
     }
 
-    .chart-pct {
-      width: 50px; text-align: right; font-size: 12px;
-      font-weight: 500; color: var(--text-muted);
-      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    .prob-pct {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
     }
 
-    /* Placeholder state */
-    .results-placeholder {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      height: 100%; min-height: 300px;
-      text-align: center; gap: 16px;
-      transition: 0.4s ease;
-      position: relative; z-index: 1;
-    }
-    .results-placeholder.hidden { opacity: 0; display: none; }
+    .prob-pct.winner { color: var(--green); font-weight: 600; }
 
-    .placeholder-icon {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: rgba(124, 58, 237, 0.08);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 4px;
-      animation: floatUp 3s ease-in-out infinite;
-    }
-    @keyframes floatUp {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-8px); }
-    }
-    .placeholder-icon svg { width: 28px; height: 28px; color: var(--accent-1); opacity: 0.5; }
-
-    .placeholder-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
-    .placeholder-desc { font-size: 13px; color: var(--text-muted); max-width: 220px; line-height: 1.5; }
-
-    /* Error state */
-    .error-message {
-      display: none; padding: 14px 18px;
-      background: rgba(239, 68, 68, 0.08);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: var(--radius-sm);
-      color: #fca5a5; font-size: 13px; line-height: 1.5;
-      animation: fadeInUp 0.3s ease;
-      position: relative; z-index: 1;
-    }
-    .error-message.show { display: block; }
-
-    /* Prediction flash effect */
-    .predict-flash {
-      position: fixed; inset: 0;
-      background: radial-gradient(circle at center, rgba(124, 58, 237, 0.15), transparent 70%);
-      z-index: 100; pointer-events: none;
-      opacity: 0;
-    }
-    .predict-flash.active {
-      animation: flashPulse 0.6s ease-out;
-    }
-    @keyframes flashPulse {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
+    /* Error message */
+    .error-msg {
+      padding: 12px 16px;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.15);
+      border-radius: var(--radius-xs);
+      font-size: 13px;
+      color: var(--red);
+      display: none;
     }
 
-    /* Prediction History */
-    .prediction-history {
-      margin-top: 8px;
-      position: relative; z-index: 1;
+    .error-msg.show { display: block; animation: fadeUp 0.3s var(--ease); }
+
+    /* History */
+    .history-section {
+      margin-top: 24px;
+      display: none;
     }
-    .history-title {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 10px;
+
+    .history-section.show { display: block; }
+
+    .history-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
     }
+
     .history-strip {
-      display: flex; gap: 8px; overflow-x: auto;
-      padding-bottom: 4px;
-    }
-    .history-item {
-      flex-shrink: 0; width: 52px; text-align: center;
-      animation: historySlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    @keyframes historySlideIn {
-      from { opacity: 0; transform: scale(0.8) translateY(8px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    .history-item canvas {
-      width: 48px; height: 48px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: white;
-    }
-    .history-item .history-label {
-      font-size: 11px; font-weight: 700; color: var(--text-secondary);
-      margin-top: 4px;
+      display: flex;
+      gap: 8px;
     }
 
-    /* Keyboard hints */
-    .kbd-hints {
-      display: flex; justify-content: center;
-      gap: 16px; margin-top: 6px;
+    .history-item {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
     }
-    .kbd-hint { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
-    kbd {
-      display: inline-block; padding: 1px 6px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 4px; font-family: inherit;
-      font-size: 10px; line-height: 1.6;
+
+    .history-item canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .history-item .history-digit {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 4px 0 0 0;
     }
 
     /* ================================================================
-       TAB 2: PERFORMANCE
+       PERFORMANCE TAB
        ================================================================ */
-    .perf-section { margin-bottom: 40px; }
-    .perf-section-title {
-      font-size: 18px; font-weight: 700; margin-bottom: 20px;
-      display: flex; align-items: center; gap: 10px;
-      color: var(--text-primary);
-    }
-    .perf-section-title svg { width: 20px; height: 20px; color: var(--accent-1); }
-
-    /* Hero Stats */
-    .stats-grid {
+    .perf-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px; margin-bottom: 40px;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
     }
-    @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    .stat-card {
-      text-align: center;
-      padding: 28px 16px;
+    @media (max-width: 768px) {
+      .perf-grid { grid-template-columns: 1fr; }
     }
-    .stat-card:hover { transform: translateY(-4px) !important; }
-    .stat-value {
-      font-size: clamp(2rem, 4vw, 2.8rem);
-      font-weight: 800;
-      background: var(--gradient-main);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 6px;
-      font-variant-numeric: tabular-nums;
-    }
-    .stat-card:nth-child(2) .stat-value {
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
-      -webkit-background-clip: text; background-clip: text;
-    }
-    .stat-card:nth-child(3) .stat-value {
-      background: linear-gradient(135deg, #06b6d4, #3b82f6);
-      -webkit-background-clip: text; background-clip: text;
-    }
-    .stat-card:nth-child(4) .stat-value {
-      background: linear-gradient(135deg, #ec4899, #8b5cf6);
-      -webkit-background-clip: text; background-clip: text;
-    }
-    .stat-label { font-size: 13px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-    /* Confusion Matrix */
-    .matrix-wrapper {
+    .card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* Confusion matrix */
+    .matrix-container {
       overflow-x: auto;
-      padding-bottom: 8px;
     }
-    .confusion-matrix {
+
+    .matrix-grid {
       display: grid;
-      grid-template-columns: 40px repeat(10, 1fr);
+      grid-template-columns: 32px repeat(10, 1fr);
       gap: 2px;
-      min-width: 500px;
+      font-family: var(--mono);
+      font-size: 11px;
     }
+
     .matrix-header {
-      font-size: 11px; font-weight: 700;
-      color: var(--text-muted);
       text-align: center;
+      color: var(--text-muted);
+      font-weight: 600;
       padding: 6px 2px;
     }
+
     .matrix-row-label {
-      font-size: 11px; font-weight: 700;
-      color: var(--text-muted);
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-weight: 600;
     }
+
     .matrix-cell {
-      aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 600;
-      color: var(--text-primary);
-      border-radius: 4px;
-      transition: var(--transition);
-      cursor: default;
-      min-width: 0;
-      position: relative;
+      text-align: center;
+      padding: 6px 2px;
+      border-radius: 3px;
+      font-size: 10px;
+      color: var(--text-dim);
+      transition: transform 0.2s var(--ease);
     }
-    .matrix-cell:hover {
-      transform: scale(1.2);
-      z-index: 10;
-      box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
-    }
-    .matrix-cell .cell-tooltip {
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 15, 30, 0.95);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 11px;
-      white-space: nowrap;
-      z-index: 20;
-      color: var(--text-primary);
-      pointer-events: none;
-    }
-    .matrix-cell:hover .cell-tooltip { display: block; }
 
-    /* Per-class table */
-    .perf-table-wrapper { overflow-x: auto; }
-    .perf-table {
+    .matrix-cell:hover { transform: scale(1.3); z-index: 10; position: relative; }
+
+    /* Per-class metrics table */
+    .metrics-table {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 4px;
-      font-size: 14px;
-      min-width: 600px;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
     }
-    .perf-table th {
-      font-size: 11px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.05em;
+
+    .metrics-table th {
+      text-align: left;
       color: var(--text-muted);
-      padding: 10px 14px; text-align: left;
-    }
-    .perf-table td {
-      padding: 12px 14px;
-      color: var(--text-secondary);
-      font-variant-numeric: tabular-nums;
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .perf-table tr td:first-child {
-      border-radius: 8px 0 0 8px;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    .perf-table tr td:last-child { border-radius: 0 8px 8px 0; }
-    .perf-table tbody tr:hover td { background: rgba(124, 58, 237, 0.06); }
-
-    .accuracy-bar-bg {
-      width: 100%; height: 6px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 3px; overflow: hidden;
-    }
-    .accuracy-bar-fill {
-      height: 100%; border-radius: 3px;
-      background: var(--gradient-main);
-      width: 0%;
-      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
-    /* K vs Accuracy Chart */
+    .metrics-table td {
+      padding: 8px 12px;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+
+    .metrics-table tr:hover td { color: var(--text); background: rgba(255,255,255,0.02); }
+
+    .metrics-table .digit-col { color: var(--accent-light); font-weight: 600; }
+
+    /* K vs Accuracy chart */
     .k-chart {
-      display: flex; align-items: flex-end;
-      gap: 12px; height: 200px;
-      padding: 0 10px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      height: 180px;
+      padding: 20px 0 0;
     }
-    .k-chart-col {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; gap: 8px; height: 100%;
+
+    .k-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      height: 100%;
       justify-content: flex-end;
     }
-    .k-chart-bar-wrap {
-      width: 100%; flex: 1;
-      display: flex; align-items: flex-end;
-      justify-content: center;
-    }
-    .k-chart-bar {
-      width: 80%; max-width: 50px;
-      border-radius: 6px 6px 0 0;
-      background: linear-gradient(to top, rgba(124, 58, 237, 0.3), rgba(59, 130, 246, 0.3));
-      transition: height 1.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
-      height: 0%;
-      cursor: default;
-      position: relative;
-    }
-    .k-chart-bar.best {
-      background: linear-gradient(to top, #7c3aed, #3b82f6);
-      box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
-    }
-    .k-chart-bar:hover { box-shadow: 0 0 20px rgba(124, 58, 237, 0.5); }
-    .k-chart-pct {
-      font-size: 11px; font-weight: 600; color: var(--text-muted);
-      white-space: nowrap;
-    }
-    .k-chart-pct.best-label { color: #a78bfa; }
-    .k-chart-label {
-      font-size: 12px; font-weight: 600; color: var(--text-secondary);
-    }
-    .k-chart-label.best-label { color: var(--text-primary); }
 
-    /* Model Config */
-    .config-grid {
+    .k-bar {
+      width: 100%;
+      max-width: 40px;
+      border-radius: 6px 6px 2px 2px;
+      background: rgba(109,92,255,0.3);
+      transition: height 0.6s var(--ease), background 0.3s;
+    }
+
+    .k-bar.best { background: linear-gradient(180deg, var(--accent-light), var(--green)); }
+
+    .k-bar-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .k-bar-value {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    /* ================================================================
+       ABOUT TAB
+       ================================================================ */
+    .about-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-    }
-    .config-item {
-      padding: 16px;
-      background: rgba(255,255,255,0.02);
-      border-radius: var(--radius-sm);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .config-item .config-label {
-      font-size: 11px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--text-muted); margin-bottom: 6px;
-    }
-    .config-item .config-value {
-      font-size: 16px; font-weight: 700;
-      color: var(--text-primary);
-    }
-    .config-value .highlight {
-      background: var(--gradient-main);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
     }
 
-    /* ================================================================
-       TAB 3: ABOUT
-       ================================================================ */
-    /* Pipeline Diagram */
-    .pipeline {
-      display: flex; align-items: center; justify-content: center;
-      gap: 0; flex-wrap: wrap;
-      margin-bottom: 40px;
+    @media (max-width: 768px) {
+      .about-grid { grid-template-columns: 1fr; }
     }
+
+    .pipeline-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .pipeline-step {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 10px;
-      padding: 24px 20px; cursor: pointer;
-      transition: var(--transition);
-      position: relative; text-align: center;
-      flex: 0 0 auto;
-    }
-    .pipeline-step:hover { transform: translateY(-4px); }
-    .pipeline-step .pipe-icon {
-      width: 56px; height: 56px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(99, 102, 241, 0.08));
-      border: 1px solid rgba(124, 58, 237, 0.15);
-      display: flex; align-items: center; justify-content: center;
-      transition: var(--transition);
-    }
-    .pipeline-step:hover .pipe-icon {
-      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(99, 102, 241, 0.15));
-      box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
-    }
-    .pipeline-step .pipe-icon svg { width: 24px; height: 24px; color: #a78bfa; }
-    .pipeline-step .pipe-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .pipeline-step .pipe-detail {
-      font-size: 12px; color: var(--text-muted);
-      max-height: 0; overflow: hidden;
-      transition: max-height 0.4s ease, opacity 0.3s;
-      opacity: 0; max-width: 150px; line-height: 1.5;
-    }
-    .pipeline-step.expanded .pipe-detail { max-height: 100px; opacity: 1; }
-
-    .pipeline-arrow {
-      color: rgba(124, 58, 237, 0.3);
-      font-size: 20px; font-weight: bold;
-      padding: 0 4px; margin-top: -30px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
     }
 
-    @media (max-width: 600px) {
-      .pipeline { flex-direction: column; }
-      .pipeline-arrow { transform: rotate(90deg); margin: -10px 0; }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-light);
+      flex-shrink: 0;
     }
 
-    /* Tech badges */
-    .tech-badges {
-      display: flex; flex-wrap: wrap;
-      justify-content: center; gap: 10px;
-      margin-bottom: 40px;
-    }
-    .tech-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 18px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 100px;
-      font-size: 14px; font-weight: 500;
-      color: var(--text-secondary);
-      transition: var(--transition);
-      animation: floatBadge 4s ease-in-out infinite;
-    }
-    .tech-badge:nth-child(2) { animation-delay: 0.3s; }
-    .tech-badge:nth-child(3) { animation-delay: 0.6s; }
-    .tech-badge:nth-child(4) { animation-delay: 0.9s; }
-    .tech-badge:nth-child(5) { animation-delay: 1.2s; }
-    .tech-badge:nth-child(6) { animation-delay: 1.5s; }
-    .tech-badge:nth-child(7) { animation-delay: 1.8s; }
-    .tech-badge:nth-child(8) { animation-delay: 2.1s; }
-
-    @keyframes floatBadge {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
+    .step-content h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
     }
 
-    .tech-badge:hover {
-      background: rgba(124, 58, 237, 0.08);
-      border-color: rgba(124, 58, 237, 0.25);
-      color: #c4b5fd;
-      transform: translateY(-3px) !important;
-    }
-    .tech-badge .tech-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%; flex-shrink: 0;
+    .step-content p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
     }
 
-    /* Footer */
-    footer {
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 40px 0; text-align: center;
-      margin-top: 20px; position: relative; z-index: 1;
+    .tech-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-    footer p {
-      font-size: 14px; color: var(--text-muted);
-      display: flex; align-items: center;
-      justify-content: center; gap: 8px;
+
+    .tech-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
     }
-    footer a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      transition: var(--transition);
+
+    .tech-name {
+      font-size: 13px;
+      font-weight: 500;
     }
-    footer a:hover { color: #a78bfa; }
+
+    .tech-detail {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
 
     /* ================================================================
-       ANIMATIONS
+       FOOTER
        ================================================================ */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .footer {
+      text-align: center;
+      padding: 40px 0 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
     }
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes canvasFlash {
-      0% { box-shadow: inset 0 0 0 0 rgba(124, 58, 237, 0.2); }
-      50% { box-shadow: inset 0 0 40px 10px rgba(124, 58, 237, 0.15); }
-      100% { box-shadow: inset 0 0 0 0 rgba(124, 58, 237, 0); }
-    }
-    .canvas-clear-anim { animation: canvasFlash 0.5s ease; }
 
-    /* Count-up completed highlight */
-    .count-done { animation: countHighlight 0.6s ease; }
-    @keyframes countHighlight {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+    .footer a {
+      color: var(--accent-light);
+      text-decoration: none;
     }
+
+    .footer a:hover { text-decoration: underline; }
 
     /* ================================================================
        RESPONSIVE
        ================================================================ */
-    @media (max-width: 820px) {
-      header { padding: 40px 0 16px; }
-      .glass-card { padding: 24px; }
-      .predicted-digit { font-size: 80px; }
-      .kbd-hints { display: none; }
-      .tab-btn .tab-kbd { display: none; }
+    @media (max-width: 640px) {
+      .app { padding: 16px 16px 40px; }
+      .topbar { flex-direction: column; gap: 12px; }
+      .stats-row { gap: 20px; }
+      .tabs { width: 100%; }
+      .tab-btn { flex: 1; justify-content: center; padding: 10px 12px; font-size: 13px; }
+      .tab-btn kbd { display: none; }
+      #draw-canvas { width: 240px; height: 240px; }
+      .btn-row { max-width: 240px; }
+      .digit-big { font-size: 72px; }
+      .perf-grid, .about-grid { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 480px) {
-      .tab-btn { font-size: 12px; padding: 10px 12px; }
-      .stats-grid { grid-template-columns: 1fr 1fr; }
-    }
+    /* ================================================================
+       SCROLLBAR
+       ================================================================ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
   </style>
 </head>
 <body>
 
-  <!-- Animated gradient mesh background -->
-  <div class="bg-mesh">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-    <div class="blob blob-4"></div>
-    <div class="blob blob-5"></div>
-  </div>
+  <!-- Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
 
-  <!-- Prediction flash overlay -->
-  <div class="predict-flash" id="predict-flash"></div>
-
-  <!-- Custom canvas cursor -->
-  <div class="canvas-cursor" id="canvas-cursor"></div>
-
-  <!-- SVG defs for gradient ring -->
+  <!-- SVG defs -->
   <svg style="position:absolute;width:0;height:0;">
     <defs>
-      <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#7c3aed"/>
-        <stop offset="50%" stop-color="#6366f1"/>
-        <stop offset="100%" stop-color="#06b6d4"/>
+      <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#6d5cff"/>
+        <stop offset="100%" stop-color="#34d399"/>
       </linearGradient>
     </defs>
   </svg>
 
-  <div class="container">
+  <div class="app">
 
-    <!-- HEADER -->
-    <header>
-      <div class="header-badge">
-        <span class="dot"></span>
-        Machine Learning Demo
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="logo">
+        <div class="logo-icon">N</div>
+        Neural Digit
       </div>
-      <h1>Digit Recognition AI</h1>
-      <p class="subtitle" id="subtitle"></p>
-    </header>
+      <div class="status-badge" id="status-badge">
+        <div class="status-dot"></div>
+        <span id="status-text">Connecting...</span>
+      </div>
+    </div>
 
-    <!-- TAB NAVIGATION -->
-    <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="predict" id="tab-predict-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+    <!-- HERO -->
+    <div class="hero">
+      <h1>Draw a digit. <span>AI predicts it.</span></h1>
+      <p>KNN classifier trained on 70,000 MNIST handwritten digits with deskewing and PCA dimensionality reduction.</p>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-value accent">98.47%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">70,000</div>
+        <div class="stat-label">Training Samples</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value green">K=3</div>
+        <div class="stat-label">Optimal K</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">50</div>
+        <div class="stat-label">PCA Components</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="predict">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
         Predict
-        <span class="tab-kbd">1</span>
+        <kbd>1</kbd>
       </button>
-      <button class="tab-btn" data-tab="performance" id="tab-perf-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <button class="tab-btn" data-tab="performance">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
         Performance
-        <span class="tab-kbd">2</span>
+        <kbd>2</kbd>
       </button>
-      <button class="tab-btn" data-tab="about" id="tab-about-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <button class="tab-btn" data-tab="about">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
         About
-        <span class="tab-kbd">3</span>
+        <kbd>3</kbd>
       </button>
-    </nav>
+    </div>
 
     <!-- ============================================================
          TAB 1: PREDICT
          ============================================================ -->
     <div class="tab-panel active" id="panel-predict">
-      <div class="predict-grid">
-        <!-- Left: Drawing Canvas -->
-        <div class="glass-card glow-purple" data-tilt>
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      <div class="predict-layout">
+
+        <!-- Left: Canvas -->
+        <div class="card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
             Drawing Canvas
           </div>
-          <div class="canvas-wrapper">
-            <div class="canvas-container" id="canvas-container">
+          <div class="canvas-area">
+            <div class="canvas-frame" id="canvas-frame">
               <canvas id="draw-canvas" width="280" height="280"></canvas>
             </div>
-            <p class="canvas-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              Draw a single digit (0&ndash;9)
-            </p>
+            <div class="canvas-hint">Draw a single digit (0-9)</div>
             <div class="btn-row">
-              <button class="btn btn-secondary" id="clear-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              <button class="btn btn-ghost" id="clear-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 Clear
               </button>
               <button class="btn btn-primary" id="predict-btn">
-                <span class="btn-text">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  Predict
-                </span>
-                <div class="btn-spinner"></div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Predict
               </button>
-            </div>
-            <div class="kbd-hints">
-              <span class="kbd-hint"><kbd>Enter</kbd> Predict</span>
-              <span class="kbd-hint"><kbd>Esc</kbd> Clear</span>
             </div>
           </div>
         </div>
 
         <!-- Right: Results -->
-        <div class="glass-card glow-blue" data-tilt>
-          <div class="card-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <div class="card results-area">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Prediction Results
           </div>
 
           <!-- Placeholder -->
           <div class="results-placeholder" id="results-placeholder">
-            <div class="placeholder-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
-            </div>
-            <p class="placeholder-title">No prediction yet</p>
-            <p class="placeholder-desc">Draw a digit on the canvas and click Predict to see the result</p>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+            <p>Draw a digit on the canvas<br>and click <strong>Predict</strong></p>
           </div>
 
-          <!-- Results content (hidden initially) -->
-          <div class="results-content" id="results-content" style="display: none;">
-            <div class="result-hero" id="result-hero">
-              <div class="predicted-digit" id="predicted-digit">0</div>
-              <div>
-                <div class="confidence-ring-container">
-                  <svg class="confidence-ring" viewBox="0 0 100 100">
-                    <circle class="bg" cx="50" cy="50" r="45"/>
-                    <circle class="fg" id="confidence-arc" cx="50" cy="50" r="45"/>
-                  </svg>
-                  <div class="confidence-text">
-                    <div class="confidence-value" id="confidence-value">0%</div>
-                    <div class="confidence-label">conf.</div>
-                  </div>
+          <!-- Results -->
+          <div class="results-content" id="results-content">
+            <div class="digit-display">
+              <div class="digit-big" id="digit-big">0</div>
+              <div class="confidence-row">
+                <div class="confidence-bar-bg">
+                  <div class="confidence-bar-fill" id="conf-bar"></div>
                 </div>
+                <span class="confidence-text" id="conf-text">0%</span>
               </div>
             </div>
-            <div class="chart-section" id="chart-section">
-              <div class="chart-title">All Probabilities</div>
-              <div class="chart-bars" id="chart-bars"></div>
-            </div>
-            <div class="error-message" id="error-message"></div>
+
+            <div class="prob-grid" id="prob-grid"></div>
           </div>
+
+          <!-- Error -->
+          <div class="error-msg" id="error-msg"></div>
         </div>
       </div>
 
-      <!-- Prediction History -->
-      <div class="prediction-history glass-card" id="prediction-history" style="display:none;">
-        <div class="history-title">Recent Predictions</div>
+      <!-- History -->
+      <div class="history-section" id="history-section">
+        <div class="history-label">Recent Predictions</div>
         <div class="history-strip" id="history-strip"></div>
       </div>
     </div>
@@ -1275,109 +1041,39 @@
          TAB 2: PERFORMANCE
          ============================================================ -->
     <div class="tab-panel" id="panel-performance">
-
-      <!-- Hero Stats -->
-      <div class="stats-grid" id="stats-grid">
-        <div class="glass-card stat-card glow-purple" data-tilt>
-          <div class="stat-value" data-count="98.47" data-suffix="%" data-decimals="2">0%</div>
-          <div class="stat-label">Accuracy</div>
-        </div>
-        <div class="glass-card stat-card glow-pink" data-tilt>
-          <div class="stat-value" data-count="1.53" data-suffix="%" data-decimals="2">0%</div>
-          <div class="stat-label">Error Rate</div>
-        </div>
-        <div class="glass-card stat-card glow-blue" data-tilt>
-          <div class="stat-value" data-count="60000" data-suffix="" data-decimals="0">0</div>
-          <div class="stat-label">Training Samples</div>
-        </div>
-        <div class="glass-card stat-card glow-cyan" data-tilt>
-          <div class="stat-value" data-count="10000" data-suffix="" data-decimals="0">0</div>
-          <div class="stat-label">Test Samples</div>
-        </div>
-      </div>
-
-      <!-- Confusion Matrix -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
-          Confusion Matrix
-        </div>
-        <div class="glass-card" data-tilt>
-          <div class="matrix-wrapper">
-            <div class="confusion-matrix" id="confusion-matrix"></div>
+      <div class="perf-grid">
+        <!-- Confusion Matrix -->
+        <div class="card full-width">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Confusion Matrix (10,000 Test Samples)
           </div>
+          <div class="matrix-container" id="matrix-container"></div>
         </div>
-      </div>
 
-      <!-- Per-Class Performance -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-          Per-Class Performance
-        </div>
-        <div class="glass-card" data-tilt>
-          <div class="perf-table-wrapper">
-            <table class="perf-table" id="perf-table">
+        <!-- Per-class metrics -->
+        <div class="card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Per-Class Metrics
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="metrics-table" id="metrics-table">
               <thead>
-                <tr>
-                  <th>Digit</th>
-                  <th>Precision</th>
-                  <th>Recall</th>
-                  <th>F1-Score</th>
-                  <th>Support</th>
-                  <th style="min-width:120px;">Accuracy</th>
-                </tr>
+                <tr><th>Digit</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
               </thead>
-              <tbody id="perf-table-body"></tbody>
+              <tbody id="metrics-body"></tbody>
             </table>
           </div>
         </div>
-      </div>
 
-      <!-- K vs Accuracy -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          K vs Accuracy
-        </div>
-        <div class="glass-card" data-tilt>
-          <div class="k-chart" id="k-chart"></div>
-        </div>
-      </div>
-
-      <!-- Model Configuration -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Model Configuration
-        </div>
-        <div class="glass-card" data-tilt>
-          <div class="config-grid">
-            <div class="config-item">
-              <div class="config-label">K Value</div>
-              <div class="config-value"><span class="highlight">3</span> (Best)</div>
-            </div>
-            <div class="config-item">
-              <div class="config-label">Distance Metric</div>
-              <div class="config-value">Minkowski <span style="color:var(--text-muted);font-size:13px;">(Euclidean, p=2)</span></div>
-            </div>
-            <div class="config-item">
-              <div class="config-label">Weights</div>
-              <div class="config-value">Distance-weighted</div>
-            </div>
-            <div class="config-item">
-              <div class="config-label">PCA Components</div>
-              <div class="config-value"><span class="highlight">50</span> <span style="color:var(--text-muted);font-size:13px;">(87.1% variance)</span></div>
-            </div>
-            <div class="config-item">
-              <div class="config-label">Preprocessing</div>
-              <div class="config-value">Deskewing</div>
-            </div>
-            <div class="config-item">
-              <div class="config-label">Cross-Validation</div>
-              <div class="config-value"><span class="highlight">97.93%</span> <span style="color:var(--text-muted);font-size:13px;">&plusmn; 0.26%</span></div>
-            </div>
+        <!-- K vs Accuracy -->
+        <div class="card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            K vs Accuracy
           </div>
+          <div class="k-chart" id="k-chart"></div>
         </div>
       </div>
     </div>
@@ -1386,360 +1082,240 @@
          TAB 3: ABOUT
          ============================================================ -->
     <div class="tab-panel" id="panel-about">
-
-      <!-- Pipeline Diagram -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          How It Works
+      <div class="about-grid">
+        <!-- Pipeline -->
+        <div class="card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            ML Pipeline
+          </div>
+          <div class="pipeline-steps">
+            <div class="pipeline-step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h4>Canvas Capture</h4>
+                <p>280x280 HTML canvas drawing is captured and sent as base64 PNG to the API.</p>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h4>Preprocessing</h4>
+                <p>Image is inverted, bounding-box cropped, resized to 20x20 and centered in 28x28 to match MNIST format.</p>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h4>Deskewing</h4>
+                <p>Moment-based affine transformation corrects digit slant, reducing error rate by ~45%.</p>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h4>PCA Reduction</h4>
+                <p>784 features reduced to 50 principal components retaining 87.1% variance. Speeds up inference 15x.</p>
+              </div>
+            </div>
+            <div class="pipeline-step">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <h4>KNN Classification</h4>
+                <p>Distance-weighted K=3 nearest neighbors voting with Minkowski distance predicts the digit.</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="glass-card" data-tilt>
-          <div class="pipeline" id="pipeline">
-            <div class="pipeline-step" data-expand>
-              <div class="pipe-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
-              </div>
-              <div class="pipe-label">Draw</div>
-              <div class="pipe-detail">Sketch on the 280x280 canvas using mouse or touch</div>
+
+        <!-- Tech stack -->
+        <div class="card">
+          <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Tech Stack
+          </div>
+          <div class="tech-stack">
+            <div class="tech-item">
+              <span class="tech-name">Model</span>
+              <span class="tech-detail">scikit-learn KNN</span>
             </div>
-            <div class="pipeline-arrow">&#8594;</div>
-            <div class="pipeline-step" data-expand>
-              <div class="pipe-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-              </div>
-              <div class="pipe-label">Preprocess</div>
-              <div class="pipe-detail">Resize to 28x28, center, normalize, deskew to match MNIST</div>
+            <div class="tech-item">
+              <span class="tech-name">Backend</span>
+              <span class="tech-detail">FastAPI + Uvicorn</span>
             </div>
-            <div class="pipeline-arrow">&#8594;</div>
-            <div class="pipeline-step" data-expand>
-              <div class="pipe-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-              </div>
-              <div class="pipe-label">PCA</div>
-              <div class="pipe-detail">Reduce 784 features to 50 principal components (87.1% variance)</div>
+            <div class="tech-item">
+              <span class="tech-name">Frontend</span>
+              <span class="tech-detail">Vanilla HTML/CSS/JS</span>
             </div>
-            <div class="pipeline-arrow">&#8594;</div>
-            <div class="pipeline-step" data-expand>
-              <div class="pipe-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><line x1="6" y1="6" x2="9.5" y2="10"/><line x1="18" y1="6" x2="14.5" y2="10"/><line x1="6" y1="18" x2="9.5" y2="14"/><line x1="18" y1="18" x2="14.5" y2="14"/></svg>
-              </div>
-              <div class="pipe-label">KNN</div>
-              <div class="pipe-detail">K=3 nearest neighbors with distance-weighted voting</div>
+            <div class="tech-item">
+              <span class="tech-name">Dataset</span>
+              <span class="tech-detail">MNIST (70K images)</span>
             </div>
-            <div class="pipeline-arrow">&#8594;</div>
-            <div class="pipeline-step" data-expand>
-              <div class="pipe-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </div>
-              <div class="pipe-label">Result</div>
-              <div class="pipe-detail">Predicted digit with confidence scores for all 10 classes</div>
+            <div class="tech-item">
+              <span class="tech-name">Preprocessing</span>
+              <span class="tech-detail">Deskew + PCA(50)</span>
+            </div>
+            <div class="tech-item">
+              <span class="tech-name">Hosting</span>
+              <span class="tech-detail">GitHub Pages + Railway</span>
+            </div>
+            <div class="tech-item">
+              <span class="tech-name">Image Processing</span>
+              <span class="tech-detail">Pillow + SciPy</span>
+            </div>
+            <div class="tech-item">
+              <span class="tech-name">Accuracy</span>
+              <span class="tech-detail">98.47% on test set</span>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Tech Stack -->
-      <div class="perf-section">
-        <div class="perf-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Tech Stack
-        </div>
-        <div class="tech-badges">
-          <span class="tech-badge"><span class="tech-dot" style="background:#3776ab;"></span>Python</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#009688;"></span>FastAPI</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#f7931e;"></span>scikit-learn</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#7c3aed;"></span>KNN</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#6366f1;"></span>PCA</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#ef4444;"></span>MNIST</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#f59e0b;"></span>JavaScript</span>
-          <span class="tech-badge"><span class="tech-dot" style="background:#06b6d4;"></span>HTML Canvas</span>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <footer>
-        <p>
-          Built with ML &middot;
-          <a href="https://github.com" target="_blank" rel="noopener">
-            <svg style="width:16px;height:16px;vertical-align:middle;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub
-          </a>
-        </p>
-      </footer>
+    <!-- FOOTER -->
+    <div class="footer">
+      <p>Built by <a href="https://github.com/SKULLFIRE07" target="_blank">SKULLFIRE07</a> &middot; <a href="https://github.com/SKULLFIRE07/ML-FINAL" target="_blank">Source Code</a></p>
     </div>
 
   </div>
 
   <script>
     // ================================================================
-    // API CONFIGURATION
+    // CONFIG
     // ================================================================
     const API_URL = "https://ml-final-production.up.railway.app";
 
-    // GitHub Pages SPA redirect handler
-    (function() {
-      const redirect = sessionStorage.redirect;
-      delete sessionStorage.redirect;
-      if (redirect && redirect !== location.href) {
-        history.replaceState(null, null, redirect);
-      }
-    })();
-
     // ================================================================
-    // TYPING EFFECT
+    // HEALTH CHECK
     // ================================================================
-    (function initTyping() {
-      const el = document.getElementById('subtitle');
-      const text = 'Powered by K-Nearest Neighbors \u00b7 98%+ Accuracy on MNIST';
-      let i = 0;
-      const cursor = document.createElement('span');
-      cursor.className = 'typing-cursor';
-      el.appendChild(cursor);
-
-      function typeChar() {
-        if (i < text.length) {
-          const span = document.createElement('span');
-          // handle the bold part
-          if (i === 11) {
-            // "K-Nearest Neighbors" starts at index 11
-          }
-          el.insertBefore(document.createTextNode(text[i]), cursor);
-          i++;
-          setTimeout(typeChar, 30 + Math.random() * 30);
+    (async function checkHealth() {
+      const badge = document.getElementById('status-badge');
+      const text = document.getElementById('status-text');
+      try {
+        const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(5000) });
+        const data = await res.json();
+        if (data.model_loaded) {
+          text.textContent = 'Model Online';
+          badge.style.borderColor = 'rgba(52,211,153,0.15)';
+          badge.style.background = 'rgba(52,211,153,0.08)';
         } else {
-          // remove cursor after delay
-          setTimeout(() => { cursor.style.display = 'none'; }, 2000);
+          text.textContent = 'Model Loading...';
+          badge.style.borderColor = 'rgba(251,191,36,0.15)';
+          badge.style.background = 'rgba(251,191,36,0.08)';
+          text.style.color = '#fbbf24';
         }
+      } catch {
+        text.textContent = 'API Offline';
+        badge.style.borderColor = 'rgba(248,113,113,0.15)';
+        badge.style.background = 'rgba(248,113,113,0.08)';
+        text.style.color = '#f87171';
+        document.querySelector('.status-dot').style.background = '#f87171';
       }
-
-      setTimeout(typeChar, 600);
     })();
 
     // ================================================================
-    // TAB SWITCHING
+    // TAB NAVIGATION
     // ================================================================
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
-    let perfAnimated = false;
 
-    function switchTab(tabName) {
-      tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
-      tabPanels.forEach(panel => {
-        const isTarget = panel.id === 'panel-' + tabName;
-        panel.classList.toggle('active', isTarget);
-        if (isTarget) {
-          // re-trigger animation
-          panel.style.animation = 'none';
-          panel.offsetHeight;
-          panel.style.animation = '';
+    function switchTab(tab) {
+      tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      tabPanels.forEach(p => {
+        p.classList.remove('active');
+        if (p.id === `panel-${tab}`) {
+          p.classList.add('active');
         }
       });
-      // Animate performance numbers on first visit
-      if (tabName === 'performance' && !perfAnimated) {
-        perfAnimated = true;
-        setTimeout(animatePerformanceTab, 200);
-      }
     }
 
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    // ================================================================
-    // 3D TILT EFFECT
-    // ================================================================
-    document.querySelectorAll('[data-tilt]').forEach(card => {
-      card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -3;
-        const rotateY = ((x - centerX) / centerX) * 3;
-        card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(4px)`;
-      });
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
-        card.style.transition = 'transform 0.5s ease';
-        setTimeout(() => { card.style.transition = ''; }, 500);
-      });
-    });
-
-    // ================================================================
-    // CUSTOM CANVAS CURSOR
-    // ================================================================
-    (function initCursor() {
-      const cursor = document.getElementById('canvas-cursor');
-      const container = document.getElementById('canvas-container');
-
-      container.addEventListener('mouseenter', () => cursor.classList.add('visible'));
-      container.addEventListener('mouseleave', () => { cursor.classList.remove('visible'); cursor.classList.remove('drawing'); });
-      container.addEventListener('mousemove', (e) => {
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
-      });
-      container.addEventListener('mousedown', () => cursor.classList.add('drawing'));
-      container.addEventListener('mouseup', () => cursor.classList.remove('drawing'));
-    })();
+    tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
     // ================================================================
     // DRAWING CANVAS
     // ================================================================
-    (function initCanvas() {
-      const canvas = document.getElementById('draw-canvas');
-      const ctx = canvas.getContext('2d');
-      const container = document.getElementById('canvas-container');
-      let isDrawing = false;
-      let lastX = 0;
-      let lastY = 0;
-      let points = [];
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+    const frame = document.getElementById('canvas-frame');
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
 
-      function clearCanvas() {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        points = [];
-      }
-      clearCanvas();
+    function clearCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    clearCanvas();
 
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 15;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-      function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        if (e.touches) {
-          return {
-            x: (e.touches[0].clientX - rect.left) * scaleX,
-            y: (e.touches[0].clientY - rect.top) * scaleY
-          };
-        }
-        return {
-          x: (e.clientX - rect.left) * scaleX,
-          y: (e.clientY - rect.top) * scaleY
-        };
-      }
-
-      function startDrawing(e) {
-        e.preventDefault();
-        isDrawing = true;
-        const pos = getPos(e);
-        lastX = pos.x;
-        lastY = pos.y;
-        points = [{ x: pos.x, y: pos.y }];
-        container.classList.add('drawing');
-      }
-
-      function draw(e) {
-        e.preventDefault();
-        if (!isDrawing) return;
-        const pos = getPos(e);
-        points.push({ x: pos.x, y: pos.y });
-
-        if (points.length >= 3) {
-          const len = points.length;
-          const p0 = points[len - 3];
-          const p1 = points[len - 2];
-          const p2 = points[len - 1];
-          const midX = (p1.x + p2.x) / 2;
-          const midY = (p1.y + p2.y) / 2;
-
-          ctx.beginPath();
-          ctx.moveTo((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
-          ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(lastX, lastY);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.stroke();
-        }
-
-        lastX = pos.x;
-        lastY = pos.y;
-      }
-
-      function stopDrawing(e) {
-        if (e) e.preventDefault();
-        isDrawing = false;
-        points = [];
-        container.classList.remove('drawing');
-      }
-
-      canvas.addEventListener('mousedown', startDrawing);
-      canvas.addEventListener('mousemove', draw);
-      canvas.addEventListener('mouseup', stopDrawing);
-      canvas.addEventListener('mouseleave', stopDrawing);
-
-      canvas.addEventListener('touchstart', startDrawing, { passive: false });
-      canvas.addEventListener('touchmove', draw, { passive: false });
-      canvas.addEventListener('touchend', stopDrawing, { passive: false });
-      canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-
-      window.drawCanvas = canvas;
-      window.clearDrawCanvas = function() {
-        clearCanvas();
-        container.classList.add('canvas-clear-anim');
-        setTimeout(() => container.classList.remove('canvas-clear-anim'), 500);
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const sx = canvas.width / rect.width;
+      const sy = canvas.height / rect.height;
+      const touch = e.touches ? e.touches[0] : e;
+      return {
+        x: (touch.clientX - rect.left) * sx,
+        y: (touch.clientY - rect.top) * sy
       };
-    })();
+    }
+
+    function startDraw(e) {
+      e.preventDefault();
+      isDrawing = true;
+      const p = getPos(e);
+      lastX = p.x;
+      lastY = p.y;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      frame.classList.add('active');
+    }
+
+    function draw(e) {
+      e.preventDefault();
+      if (!isDrawing) return;
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      lastX = p.x;
+      lastY = p.y;
+    }
+
+    function stopDraw(e) {
+      if (e) e.preventDefault();
+      isDrawing = false;
+      frame.classList.remove('active');
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDraw, { passive: false });
+    canvas.addEventListener('touchcancel', stopDraw, { passive: false });
 
     // ================================================================
-    // BUILD CHART ROWS
+    // BUILD PROBABILITY BARS
     // ================================================================
-    (function buildChart() {
-      const container = document.getElementById('chart-bars');
+    (function buildProbBars() {
+      const grid = document.getElementById('prob-grid');
       for (let i = 0; i <= 9; i++) {
         const row = document.createElement('div');
-        row.className = 'chart-row';
+        row.className = 'prob-row';
         row.innerHTML = `
-          <span class="chart-label">${i}</span>
-          <div class="chart-bar-bg">
-            <div class="chart-bar-fill" id="bar-${i}"></div>
-          </div>
-          <span class="chart-pct" id="pct-${i}">0%</span>
+          <span class="prob-label">${i}</span>
+          <div class="prob-bar-bg"><div class="prob-bar-fill" id="pbar-${i}"></div></div>
+          <span class="prob-pct" id="ppct-${i}">0.0%</span>
         `;
-        container.appendChild(row);
+        grid.appendChild(row);
       }
     })();
-
-    // ================================================================
-    // PREDICTION HISTORY
-    // ================================================================
-    const predictionHistory = [];
-
-    function addToHistory(digit, canvasEl) {
-      const histContainer = document.getElementById('prediction-history');
-      const strip = document.getElementById('history-strip');
-
-      // Create thumbnail
-      const thumbCanvas = document.createElement('canvas');
-      thumbCanvas.width = 48;
-      thumbCanvas.height = 48;
-      const thumbCtx = thumbCanvas.getContext('2d');
-      thumbCtx.drawImage(canvasEl, 0, 0, 48, 48);
-
-      predictionHistory.unshift({ digit, canvas: thumbCanvas });
-      if (predictionHistory.length > 5) predictionHistory.pop();
-
-      // Rebuild strip
-      strip.innerHTML = '';
-      predictionHistory.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.appendChild(item.canvas);
-        const label = document.createElement('div');
-        label.className = 'history-label';
-        label.textContent = item.digit;
-        div.appendChild(label);
-        strip.appendChild(div);
-      });
-
-      histContainer.style.display = 'block';
-    }
 
     // ================================================================
     // PREDICTION LOGIC
@@ -1748,160 +1324,98 @@
     const clearBtn = document.getElementById('clear-btn');
     const placeholder = document.getElementById('results-placeholder');
     const resultsContent = document.getElementById('results-content');
-    const resultHero = document.getElementById('result-hero');
-    const chartSection = document.getElementById('chart-section');
-    const errorMessage = document.getElementById('error-message');
+    const errorMsg = document.getElementById('error-msg');
 
-    function showError(msg) {
-      errorMessage.textContent = msg;
-      errorMessage.classList.add('show');
-      setTimeout(() => errorMessage.classList.remove('show'), 6000);
-    }
-
-    function flashScreen() {
-      const flash = document.getElementById('predict-flash');
-      flash.classList.remove('active');
-      void flash.offsetWidth;
-      flash.classList.add('active');
-    }
-
-    function animateResults(predicted, confidence, probabilities) {
-      placeholder.classList.add('hidden');
-      resultsContent.style.display = 'flex';
-      errorMessage.classList.remove('show');
-
-      // Flash effect
-      flashScreen();
-
-      // Predicted digit with neon glow
-      const digitEl = document.getElementById('predicted-digit');
-      digitEl.textContent = predicted;
-      digitEl.classList.remove('neon-glow');
-      void digitEl.offsetWidth;
-      digitEl.classList.add('neon-glow');
-
-      // Confidence ring (r=45, circumference = 2*PI*45)
-      const circumference = 2 * Math.PI * 45;
-      const offset = circumference * (1 - confidence / 100);
-      const arc = document.getElementById('confidence-arc');
-      arc.style.transition = 'none';
-      arc.style.strokeDasharray = circumference;
-      arc.style.strokeDashoffset = circumference;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          arc.style.transition = 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)';
-          arc.style.strokeDashoffset = offset;
-        });
-      });
-
-      document.getElementById('confidence-value').textContent = confidence.toFixed(1) + '%';
-
-      // Animate hero
-      resultHero.classList.remove('visible');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => { resultHero.classList.add('visible'); });
-      });
-
-      // Animate chart
-      chartSection.classList.remove('visible');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => { chartSection.classList.add('visible'); });
-      });
-
-      // Animate bars with stagger
-      probabilities.forEach((prob, i) => {
-        const bar = document.getElementById(`bar-${i}`);
-        const pct = document.getElementById(`pct-${i}`);
-        const percentage = (prob * 100);
-
-        bar.style.transition = 'none';
-        bar.style.width = '0%';
-        bar.classList.remove('winner');
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            bar.style.transition = `width 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${i * 0.06}s`;
-            bar.style.width = Math.max(percentage, 0.5) + '%';
-            if (i === predicted) {
-              bar.classList.add('winner');
-            }
-          });
-        });
-
-        pct.textContent = percentage.toFixed(1) + '%';
-      });
-
-      // Add to history
-      addToHistory(predicted, window.drawCanvas);
-    }
-
-    function resetResults() {
-      placeholder.classList.remove('hidden');
-      resultsContent.style.display = 'none';
-      resultHero.classList.remove('visible');
-      chartSection.classList.remove('visible');
-      errorMessage.classList.remove('show');
-
-      for (let i = 0; i <= 9; i++) {
-        const bar = document.getElementById(`bar-${i}`);
-        const pct = document.getElementById(`pct-${i}`);
-        bar.style.width = '0%';
-        bar.classList.remove('winner');
-        pct.textContent = '0%';
-      }
-    }
-
-    function isCanvasBlank() {
-      const canvas = window.drawCanvas;
-      const ctx = canvas.getContext('2d');
+    function isBlank() {
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) {
-          return false;
-        }
+        if (data[i] < 250 || data[i+1] < 250 || data[i+2] < 250) return false;
       }
       return true;
     }
 
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.add('show');
+      setTimeout(() => errorMsg.classList.remove('show'), 5000);
+    }
+
+    function displayResults(digit, confidence, probabilities) {
+      placeholder.style.display = 'none';
+      resultsContent.style.display = 'flex';
+      errorMsg.classList.remove('show');
+
+      // Big digit
+      const digitEl = document.getElementById('digit-big');
+      digitEl.textContent = digit;
+      digitEl.style.animation = 'none';
+      void digitEl.offsetWidth;
+      digitEl.style.animation = 'digitPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+      // Confidence bar
+      const confPct = (confidence * 100);
+      document.getElementById('conf-bar').style.width = confPct + '%';
+      document.getElementById('conf-text').textContent = confPct.toFixed(1) + '%';
+
+      // Probability bars
+      probabilities.forEach((prob, i) => {
+        const pct = prob * 100;
+        const bar = document.getElementById(`pbar-${i}`);
+        const txt = document.getElementById(`ppct-${i}`);
+
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.className = 'prob-bar-fill';
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            bar.style.transition = `width 0.5s cubic-bezier(0.4,0,0.2,1) ${i * 0.04}s`;
+            bar.style.width = Math.max(pct, 0.3) + '%';
+            if (i === digit) bar.classList.add('winner');
+          });
+        });
+
+        txt.textContent = pct.toFixed(1) + '%';
+        txt.className = 'prob-pct' + (i === digit ? ' winner' : '');
+      });
+
+      // Add to history
+      addToHistory(digit, canvas);
+    }
+
+    function resetResults() {
+      placeholder.style.display = 'flex';
+      resultsContent.style.display = 'none';
+      errorMsg.classList.remove('show');
+    }
+
     async function predict() {
-      if (isCanvasBlank()) {
-        showError('Please draw a digit on the canvas first.');
-        placeholder.classList.remove('hidden');
-        resultsContent.style.display = 'flex';
+      if (isBlank()) {
+        showError('Draw a digit first!');
         return;
       }
 
       predictBtn.classList.add('loading');
       predictBtn.disabled = true;
-      errorMessage.classList.remove('show');
 
       try {
-        const canvas = window.drawCanvas;
         const dataURL = canvas.toDataURL('image/png');
         const base64 = dataURL.split(',')[1];
 
-        const response = await fetch(`${API_URL}/predict`, {
+        const res = await fetch(`${API_URL}/predict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: base64 })
         });
 
-        if (!response.ok) {
-          throw new Error(`Server returned ${response.status}`);
-        }
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
 
-        const data = await response.json();
-        const predicted = data.predicted_digit;
-        const confidence = data.confidence * 100;
-        const probabilities = data.probabilities;
-
-        animateResults(predicted, confidence, probabilities);
+        const data = await res.json();
+        displayResults(data.digit, data.confidence, data.probabilities);
 
       } catch (err) {
         console.error('Prediction failed:', err);
-        placeholder.classList.add('hidden');
-        resultsContent.style.display = 'flex';
-        showError(`Could not reach the prediction API. Make sure the backend is running at ${API_URL}`);
+        showError(`Could not reach the API at ${API_URL}`);
       } finally {
         predictBtn.classList.remove('loading');
         predictBtn.disabled = false;
@@ -1910,231 +1424,167 @@
 
     predictBtn.addEventListener('click', predict);
     clearBtn.addEventListener('click', () => {
-      window.clearDrawCanvas();
+      clearCanvas();
       resetResults();
     });
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      // Don't intercept if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // ================================================================
+    // PREDICTION HISTORY
+    // ================================================================
+    const history = [];
 
-      if (e.key === 'Enter' && !predictBtn.disabled) {
-        e.preventDefault();
-        predict();
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        window.clearDrawCanvas();
-        resetResults();
-      }
+    function addToHistory(digit, srcCanvas) {
+      const section = document.getElementById('history-section');
+      const strip = document.getElementById('history-strip');
+
+      const thumb = document.createElement('canvas');
+      thumb.width = 48;
+      thumb.height = 48;
+      thumb.getContext('2d').drawImage(srcCanvas, 0, 0, 48, 48);
+
+      history.unshift({ digit, canvas: thumb });
+      if (history.length > 8) history.pop();
+
+      strip.innerHTML = '';
+      history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.appendChild(item.canvas);
+        const label = document.createElement('div');
+        label.className = 'history-digit';
+        label.textContent = item.digit;
+        div.appendChild(label);
+        strip.appendChild(div);
+      });
+
+      section.classList.add('show');
+    }
+
+    // ================================================================
+    // KEYBOARD SHORTCUTS
+    // ================================================================
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Enter' && !predictBtn.disabled) { e.preventDefault(); predict(); }
+      if (e.key === 'Escape') { e.preventDefault(); clearCanvas(); resetResults(); }
       if (e.key === '1') { e.preventDefault(); switchTab('predict'); }
       if (e.key === '2') { e.preventDefault(); switchTab('performance'); }
       if (e.key === '3') { e.preventDefault(); switchTab('about'); }
     });
 
     // ================================================================
-    // PERFORMANCE TAB DATA & ANIMATIONS
+    // PERFORMANCE TAB DATA
     // ================================================================
-    const CONFUSION_MATRIX = [
-      [981,  1,  0,  0,  0,  0,  1,  2,  0,  1],
-      [  0,1119,  2,  0,  1,  0,  1,  2,  0,  0],
-      [  2,  3,984,  2,  1,  2,  0,  4,  1,  0],
-      [  2,  0,  2,996,  0,  9,  0,  5,  5,  1],
-      [  0,  1,  0,  0,955,  0,  1,  2,  0, 16],
-      [  5,  0,  0,  2,  0,887,  5,  2,  0,  1],
-      [  2,  2,  0,  0,  1,  0,977,  0,  0,  0],
-      [  1,  2,  3,  0,  2,  0,  0,1026, 0,  8],
-      [  3,  3,  1,  5,  1,  7,  2,  2,946,  5],
-      [  0,  0,  0,  4,  7,  1,  0,  2,  4,976]
+    const CONFUSION = [
+      [981,1,0,0,0,0,1,2,0,1],
+      [0,1119,2,0,1,0,1,2,0,0],
+      [2,3,984,2,1,2,0,4,1,0],
+      [2,0,2,996,0,9,0,5,5,1],
+      [0,1,0,0,955,0,1,2,0,16],
+      [5,0,0,2,0,887,5,2,0,1],
+      [2,2,0,0,1,0,977,0,0,0],
+      [1,2,3,0,2,0,0,1026,0,8],
+      [3,3,1,5,1,7,2,2,946,5],
+      [0,0,0,4,7,1,0,2,4,976]
     ];
 
     const PER_CLASS = [
-      { digit: 0, precision: 0.9849, recall: 0.9949, f1: 0.9899, support: 986 },
-      { digit: 1, precision: 0.9894, recall: 0.9947, f1: 0.9920, support: 1125 },
-      { digit: 2, precision: 0.9919, recall: 0.9850, f1: 0.9884, support: 999 },
-      { digit: 3, precision: 0.9871, recall: 0.9765, f1: 0.9818, support: 1020 },
-      { digit: 4, precision: 0.9866, recall: 0.9795, f1: 0.9830, support: 975 },
-      { digit: 5, precision: 0.9779, recall: 0.9834, f1: 0.9807, support: 902 },
-      { digit: 6, precision: 0.9889, recall: 0.9949, f1: 0.9919, support: 982 },
-      { digit: 7, precision: 0.9818, recall: 0.9846, f1: 0.9832, support: 1042 },
-      { digit: 8, precision: 0.9885, recall: 0.9703, f1: 0.9793, support: 975 },
-      { digit: 9, precision: 0.9692, recall: 0.9819, f1: 0.9755, support: 994 }
+      {d:0,p:.9849,r:.9949,f:.9899},
+      {d:1,p:.9894,r:.9947,f:.9920},
+      {d:2,p:.9919,r:.9850,f:.9884},
+      {d:3,p:.9871,r:.9765,f:.9818},
+      {d:4,p:.9866,r:.9795,f:.9830},
+      {d:5,p:.9779,r:.9834,f:.9807},
+      {d:6,p:.9889,r:.9949,f:.9919},
+      {d:7,p:.9818,r:.9846,f:.9832},
+      {d:8,p:.9885,r:.9703,f:.9793},
+      {d:9,p:.9692,r:.9819,f:.9755}
     ];
 
     const K_DATA = [
-      { k: 1, acc: 98.28 },
-      { k: 2, acc: 98.28 },
-      { k: 3, acc: 98.47 },
-      { k: 4, acc: 98.44 },
-      { k: 5, acc: 98.37 },
-      { k: 7, acc: 98.35 },
-      { k: 9, acc: 98.35 },
-      { k: 11, acc: 98.34 }
+      {k:1,acc:98.28},{k:2,acc:98.28},{k:3,acc:98.47},{k:4,acc:98.44},
+      {k:5,acc:98.37},{k:7,acc:98.35},{k:9,acc:98.35},{k:11,acc:98.34}
     ];
 
     // Build confusion matrix
     (function buildMatrix() {
-      const grid = document.getElementById('confusion-matrix');
-      const maxVal = Math.max(...CONFUSION_MATRIX.flat());
+      const container = document.getElementById('matrix-container');
+      const maxVal = Math.max(...CONFUSION.flat());
+      let html = '<div class="matrix-grid">';
 
       // Header row
-      grid.appendChild(createDiv('matrix-header', ''));
-      for (let c = 0; c < 10; c++) {
-        grid.appendChild(createDiv('matrix-header', c));
+      html += '<div class="matrix-header"></div>';
+      for (let j = 0; j < 10; j++) {
+        html += `<div class="matrix-header">${j}</div>`;
       }
 
-      // Data rows
-      for (let r = 0; r < 10; r++) {
-        grid.appendChild(createDiv('matrix-row-label', r));
-        for (let c = 0; c < 10; c++) {
-          const val = CONFUSION_MATRIX[r][c];
+      for (let i = 0; i < 10; i++) {
+        html += `<div class="matrix-row-label">${i}</div>`;
+        for (let j = 0; j < 10; j++) {
+          const val = CONFUSION[i][j];
           const intensity = val / maxVal;
-          const isDiag = r === c;
-          const bgColor = isDiag
-            ? `rgba(124, 58, 237, ${0.1 + intensity * 0.6})`
-            : val > 0
-              ? `rgba(239, 68, 68, ${0.05 + (val / 20) * 0.3})`
-              : 'rgba(255,255,255,0.02)';
-
-          const cell = document.createElement('div');
-          cell.className = 'matrix-cell';
-          cell.style.background = bgColor;
-          cell.textContent = val > 0 ? val : '';
-
-          const tooltip = document.createElement('div');
-          tooltip.className = 'cell-tooltip';
-          tooltip.textContent = `Actual: ${r}, Predicted: ${c}, Count: ${val}`;
-          cell.appendChild(tooltip);
-
-          grid.appendChild(cell);
+          let bg, color;
+          if (i === j) {
+            bg = `rgba(109,92,255,${0.1 + intensity * 0.6})`;
+            color = intensity > 0.5 ? '#fff' : 'var(--text-dim)';
+          } else {
+            bg = val > 0 ? `rgba(248,113,113,${Math.min(intensity * 3, 0.4)})` : 'transparent';
+            color = val > 0 ? 'var(--text-dim)' : 'var(--text-muted)';
+          }
+          html += `<div class="matrix-cell" style="background:${bg};color:${color}" title="True: ${i}, Predicted: ${j}, Count: ${val}">${val}</div>`;
         }
       }
 
-      function createDiv(cls, text) {
-        const div = document.createElement('div');
-        div.className = cls;
-        div.textContent = text;
-        return div;
-      }
+      html += '</div>';
+      container.innerHTML = html;
     })();
 
-    // Build per-class table
-    (function buildPerfTable() {
-      const tbody = document.getElementById('perf-table-body');
-      PER_CLASS.forEach((row, idx) => {
+    // Build per-class metrics
+    (function buildMetrics() {
+      const body = document.getElementById('metrics-body');
+      PER_CLASS.forEach(c => {
         const tr = document.createElement('tr');
-        const f1pct = (row.f1 * 100).toFixed(1);
         tr.innerHTML = `
-          <td>${row.digit}</td>
-          <td>${row.precision.toFixed(4)}</td>
-          <td>${row.recall.toFixed(4)}</td>
-          <td>${row.f1.toFixed(4)}</td>
-          <td>${row.support.toLocaleString()}</td>
-          <td>
-            <div class="accuracy-bar-bg">
-              <div class="accuracy-bar-fill" id="acc-bar-${idx}" data-width="${f1pct}"></div>
-            </div>
-          </td>
+          <td class="digit-col">${c.d}</td>
+          <td>${(c.p * 100).toFixed(1)}%</td>
+          <td>${(c.r * 100).toFixed(1)}%</td>
+          <td>${(c.f * 100).toFixed(1)}%</td>
         `;
-        tbody.appendChild(tr);
+        body.appendChild(tr);
       });
     })();
 
     // Build K chart
     (function buildKChart() {
-      const chart = document.getElementById('k-chart');
-      const minAcc = 98.2;
-      const maxAcc = 98.5;
-      const bestK = 3;
+      const container = document.getElementById('k-chart');
+      const minAcc = Math.min(...K_DATA.map(d => d.acc));
+      const maxAcc = Math.max(...K_DATA.map(d => d.acc));
+      const range = maxAcc - minAcc || 0.1;
 
-      K_DATA.forEach(item => {
+      K_DATA.forEach(d => {
         const col = document.createElement('div');
-        col.className = 'k-chart-col';
+        col.className = 'k-bar-col';
 
-        const pctLabel = document.createElement('div');
-        pctLabel.className = 'k-chart-pct' + (item.k === bestK ? ' best-label' : '');
-        pctLabel.textContent = item.acc.toFixed(2) + '%';
+        const heightPct = 30 + ((d.acc - minAcc) / range) * 70;
 
-        const barWrap = document.createElement('div');
-        barWrap.className = 'k-chart-bar-wrap';
+        const value = document.createElement('div');
+        value.className = 'k-bar-value';
+        value.textContent = d.acc.toFixed(2) + '%';
+
         const bar = document.createElement('div');
-        bar.className = 'k-chart-bar' + (item.k === bestK ? ' best' : '');
-        const heightPct = ((item.acc - minAcc) / (maxAcc - minAcc)) * 80 + 15;
-        bar.dataset.height = heightPct;
-        barWrap.appendChild(bar);
+        bar.className = 'k-bar' + (d.acc === maxAcc ? ' best' : '');
+        bar.style.height = heightPct + '%';
 
-        const kLabel = document.createElement('div');
-        kLabel.className = 'k-chart-label' + (item.k === bestK ? ' best-label' : '');
-        kLabel.textContent = 'K=' + item.k;
+        const label = document.createElement('div');
+        label.className = 'k-bar-label';
+        label.textContent = 'K=' + d.k;
 
-        col.appendChild(pctLabel);
-        col.appendChild(barWrap);
-        col.appendChild(kLabel);
-        chart.appendChild(col);
+        col.appendChild(value);
+        col.appendChild(bar);
+        col.appendChild(label);
+        container.appendChild(col);
       });
     })();
-
-    // Count-up animation
-    function countUp(el, target, decimals, suffix, duration) {
-      const start = 0;
-      const startTime = performance.now();
-      function update(now) {
-        const elapsed = now - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        // ease out quad
-        const eased = 1 - (1 - progress) * (1 - progress);
-        const current = start + (target - start) * eased;
-        if (decimals > 0) {
-          el.textContent = current.toFixed(decimals) + suffix;
-        } else {
-          el.textContent = Math.round(current).toLocaleString() + suffix;
-        }
-        if (progress < 1) {
-          requestAnimationFrame(update);
-        } else {
-          el.classList.add('count-done');
-        }
-      }
-      requestAnimationFrame(update);
-    }
-
-    // Animate the performance tab elements
-    function animatePerformanceTab() {
-      // Count up stats
-      document.querySelectorAll('.stat-value[data-count]').forEach((el, i) => {
-        setTimeout(() => {
-          countUp(el, parseFloat(el.dataset.count), parseInt(el.dataset.decimals), el.dataset.suffix, 1500);
-        }, i * 150);
-      });
-
-      // Animate accuracy bars in table
-      setTimeout(() => {
-        document.querySelectorAll('.accuracy-bar-fill[data-width]').forEach((bar, i) => {
-          setTimeout(() => {
-            bar.style.width = bar.dataset.width + '%';
-          }, i * 80);
-        });
-      }, 400);
-
-      // Animate K chart bars
-      setTimeout(() => {
-        document.querySelectorAll('.k-chart-bar[data-height]').forEach((bar, i) => {
-          setTimeout(() => {
-            bar.style.height = bar.dataset.height + '%';
-          }, i * 100);
-        });
-      }, 600);
-    }
-
-    // ================================================================
-    // PIPELINE EXPAND/COLLAPSE
-    // ================================================================
-    document.querySelectorAll('.pipeline-step[data-expand]').forEach(step => {
-      step.addEventListener('click', () => {
-        step.classList.toggle('expanded');
-      });
-    });
   </script>
 </body>
 </html>

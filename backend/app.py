@@ -120,32 +120,63 @@ def preprocess_canvas_image(image_bytes: bytes) -> np.ndarray:
 
     Steps:
       1. Open image, convert to grayscale
-      2. Resize to 28x28
-      3. Invert if needed (canvas = white bg + black ink -> MNIST = black bg + white ink)
-      4. Normalize to [0, 1]
-      5. Center the digit by cropping to bounding box and re-centering in 20x20 area
-      6. Deskew
+      2. Invert colors (canvas = white bg → MNIST = black bg)
+      3. Find bounding box of the digit
+      4. Crop and resize to 20x20 (maintaining aspect ratio)
+      5. Center in 28x28 image (MNIST standard format)
+      6. Normalize to [0, 1]
+      7. Deskew
     """
     # Open and convert to grayscale
     img = Image.open(io.BytesIO(image_bytes)).convert("L")
-
-    # Resize to 28x28 using high-quality resampling
-    img = img.resize((28, 28), Image.LANCZOS)
-
-    # Convert to numpy array
     pixels = np.array(img, dtype=np.float64)
 
-    # Invert colors: canvas has white background (255) with black drawing (0)
-    # MNIST has black background (0) with white digits (255)
+    # Invert: canvas has white bg (255) + black ink (0) → MNIST black bg + white ink
     pixels = 255.0 - pixels
 
-    # Normalize to [0, 1] to match training
-    pixels = pixels / 255.0
+    # Find bounding box of non-zero pixels (the digit)
+    threshold = 30
+    rows = np.any(pixels > threshold, axis=1)
+    cols = np.any(pixels > threshold, axis=0)
 
-    # Flatten to 784-element vector
-    flat = pixels.flatten()
+    if not np.any(rows) or not np.any(cols):
+        return np.zeros(784, dtype=np.float64)
 
-    # Apply deskewing (same as training)
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+
+    # Crop with padding
+    pad = 15
+    rmin = max(0, rmin - pad)
+    rmax = min(pixels.shape[0] - 1, rmax + pad)
+    cmin = max(0, cmin - pad)
+    cmax = min(pixels.shape[1] - 1, cmax + pad)
+    cropped = pixels[rmin:rmax + 1, cmin:cmax + 1]
+
+    # Resize to fit in 20x20 maintaining aspect ratio
+    crop_h, crop_w = cropped.shape
+    if crop_h > crop_w:
+        new_h = 20
+        new_w = max(1, int(round(20.0 * crop_w / crop_h)))
+    else:
+        new_w = 20
+        new_h = max(1, int(round(20.0 * crop_h / crop_w)))
+
+    crop_img = Image.fromarray(cropped.astype(np.uint8))
+    resized = crop_img.resize((new_w, new_h), Image.LANCZOS)
+    resized_arr = np.array(resized, dtype=np.float64)
+
+    # Center in 28x28 (MNIST standard: 20x20 digit with 4px padding)
+    result = np.zeros((28, 28), dtype=np.float64)
+    top = (28 - new_h) // 2
+    left = (28 - new_w) // 2
+    result[top:top + new_h, left:left + new_w] = resized_arr
+
+    # Normalize to [0, 1]
+    result = result / 255.0
+
+    # Flatten and deskew
+    flat = result.flatten()
     flat = deskew(flat)
 
     return flat
