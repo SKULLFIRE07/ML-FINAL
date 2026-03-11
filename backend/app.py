@@ -114,101 +114,108 @@ def deskew(image):
 # ---------------------------------------------------------------------------
 # Image preprocessing pipeline
 # ---------------------------------------------------------------------------
-def center_by_mass(img_28x28):
-    """
-    Shift the image so its center of mass is at (14, 14).
-    This matches how MNIST digits are centered.
-    """
-    total = img_28x28.sum()
-    if total < 1e-10:
-        return img_28x28
-
-    rows, cols = np.mgrid[0:28, 0:28]
-    cy = (rows * img_28x28).sum() / total
-    cx = (cols * img_28x28).sum() / total
-
-    shift_y = 14.0 - cy
-    shift_x = 14.0 - cx
-
-    shifted = shift(img_28x28, [shift_y, shift_x], order=1, mode='constant', cval=0.0)
-    return shifted
-
-
 def preprocess_canvas_image(image_bytes: bytes):
     """
     Convert a raw PNG image (from an HTML canvas) into a 784-element feature
     vector that matches the training preprocessing pipeline.
 
-    Returns (features_flat, processed_28x28_image_array) so we can also
-    return the processed image to the frontend for visualization.
+    Returns (features_flat, processed_28x28_image_array).
+
+    Approach: Create a square crop centered on the digit's center of mass,
+    sized so the digit fills ~71% (matching MNIST's 20/28 ratio).
+    Resize that square to 28x28. This naturally handles any digit size.
 
     Steps:
-      1. Open image, convert to grayscale
-      2. Invert colors (canvas = white bg → MNIST = black bg)
-      3. Find bounding box of the digit
-      4. Crop and resize to 20x20 (maintaining aspect ratio)
-      5. Place in 28x28 image
-      6. Center by center of mass (matching MNIST exactly)
-      7. Apply light Gaussian smoothing
-      8. Normalize to [0, 1]
-      9. Deskew
+      1. Open image, convert to grayscale, invert
+      2. Find digit bounding box and center of mass
+      3. Create square crop centered on center of mass (sized proportionally)
+      4. Resize square to 28x28
+      5. Shift so center of mass is at (14,14) — matching MNIST
+      6. Normalize to [0, 1] (matching training: X / 255.0)
+      7. Deskew (matching training)
     """
     # Open and convert to grayscale
     img = Image.open(io.BytesIO(image_bytes)).convert("L")
     pixels = np.array(img, dtype=np.float64)
 
-    # Invert: canvas has white bg (255) + black ink (0) → MNIST black bg + white ink
+    # Invert: canvas white bg (255) + black ink (0) → MNIST black bg + white ink
     pixels = 255.0 - pixels
 
-    # Find bounding box of non-zero pixels (the digit)
+    # Find bounding box of the digit
     threshold = 30
-    rows = np.any(pixels > threshold, axis=1)
-    cols = np.any(pixels > threshold, axis=0)
+    row_mask = np.any(pixels > threshold, axis=1)
+    col_mask = np.any(pixels > threshold, axis=0)
 
-    if not np.any(rows) or not np.any(cols):
+    if not np.any(row_mask) or not np.any(col_mask):
         empty = np.zeros(784, dtype=np.float64)
-        return empty, np.zeros((28, 28), dtype=np.float64)
+        return empty, np.zeros((28, 28), dtype=np.uint8)
 
-    rmin, rmax = np.where(rows)[0][[0, -1]]
-    cmin, cmax = np.where(cols)[0][[0, -1]]
+    rmin, rmax = np.where(row_mask)[0][[0, -1]]
+    cmin, cmax = np.where(col_mask)[0][[0, -1]]
 
-    # Crop with padding
-    pad = 20
-    rmin = max(0, rmin - pad)
-    rmax = min(pixels.shape[0] - 1, rmax + pad)
-    cmin = max(0, cmin - pad)
-    cmax = min(pixels.shape[1] - 1, cmax + pad)
-    cropped = pixels[rmin:rmax + 1, cmin:cmax + 1]
+    # Compute center of mass of the digit
+    digit_region = pixels.copy()
+    digit_region[digit_region < threshold] = 0
+    total = digit_region.sum()
+    rows_idx = np.arange(pixels.shape[0])[:, None]
+    cols_idx = np.arange(pixels.shape[1])[None, :]
+    cm_r = (rows_idx * digit_region).sum() / total
+    cm_c = (cols_idx * digit_region).sum() / total
 
-    # Resize to fit in 20x20 maintaining aspect ratio
-    crop_h, crop_w = cropped.shape
-    if crop_h > crop_w:
-        new_h = 20
-        new_w = max(1, int(round(20.0 * crop_w / crop_h)))
-    else:
-        new_w = 20
-        new_h = max(1, int(round(20.0 * crop_h / crop_w)))
+    # Determine square crop size
+    # MNIST format: digit fits in ~20x20 inside 28x28 → digit is 71.4% of image
+    # So our crop should be: digit_size / 0.714
+    bbox_h = rmax - rmin + 1
+    bbox_w = cmax - cmin + 1
+    digit_size = max(bbox_h, bbox_w)
+    crop_side = max(int(digit_size / 0.70), digit_size + 16)  # at least 8px padding each side
 
+    # Create square crop centered on center of mass
+    half = crop_side / 2.0
+    r1 = int(cm_r - half)
+    r2 = int(cm_r + half)
+    c1 = int(cm_c - half)
+    c2 = int(cm_c + half)
+
+    # Extract with zero-padding if crop goes outside image bounds
+    crop_h = r2 - r1
+    crop_w = c2 - c1
+    cropped = np.zeros((crop_h, crop_w), dtype=np.float64)
+
+    # Compute overlap between crop and actual image
+    src_r1 = max(0, r1)
+    src_r2 = min(pixels.shape[0], r2)
+    src_c1 = max(0, c1)
+    src_c2 = min(pixels.shape[1], c2)
+    dst_r1 = src_r1 - r1
+    dst_r2 = dst_r1 + (src_r2 - src_r1)
+    dst_c1 = src_c1 - c1
+    dst_c2 = dst_c1 + (src_c2 - src_c1)
+    cropped[dst_r1:dst_r2, dst_c1:dst_c2] = pixels[src_r1:src_r2, src_c1:src_c2]
+
+    # Resize the square crop directly to 28x28
     crop_img = Image.fromarray(cropped.astype(np.uint8))
-    resized = crop_img.resize((new_w, new_h), Image.LANCZOS)
-    resized_arr = np.array(resized, dtype=np.float64)
+    resized_28 = crop_img.resize((28, 28), Image.LANCZOS)
+    result = np.array(resized_28, dtype=np.float64)
 
-    # Place in 28x28 image
-    result = np.zeros((28, 28), dtype=np.float64)
-    top = (28 - new_h) // 2
-    left = (28 - new_w) // 2
-    result[top:top + new_h, left:left + new_w] = resized_arr
+    # Fine-tune: shift so center of mass is at (14, 14) — matching MNIST exactly
+    total_28 = result.sum()
+    if total_28 > 1e-10:
+        r_idx, c_idx = np.mgrid[0:28, 0:28]
+        cm_r_28 = (r_idx * result).sum() / total_28
+        cm_c_28 = (c_idx * result).sum() / total_28
+        shift_r = 14.0 - cm_r_28
+        shift_c = 14.0 - cm_c_28
+        if abs(shift_r) > 0.5 or abs(shift_c) > 0.5:
+            result = shift(result, [shift_r, shift_c], order=1, mode='constant', cval=0.0)
 
-    # Center by center of mass (matching MNIST standard)
-    result = center_by_mass(result)
-
-    # Normalize to [0, 1] — must match training exactly (training uses /255.0)
+    # Normalize to [0, 1] — must match training exactly (training uses X / 255.0)
     result = result / 255.0
 
-    # Save the processed image for visualization (before deskew)
+    # Save processed image for visualization (before deskew)
     processed_img = (result * 255).astype(np.uint8)
 
-    # Flatten and deskew
+    # Flatten and deskew (matching training pipeline)
     flat = result.flatten()
     flat = deskew(flat)
 
