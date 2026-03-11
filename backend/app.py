@@ -9,7 +9,7 @@ import base64
 import pickle
 from typing import Optional
 import numpy as np
-from scipy.ndimage import affine_transform, gaussian_filter, shift
+from scipy.ndimage import affine_transform, shift
 from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -202,13 +202,8 @@ def preprocess_canvas_image(image_bytes: bytes):
     # Center by center of mass (matching MNIST standard)
     result = center_by_mass(result)
 
-    # Light Gaussian smoothing to match MNIST anti-aliasing style
-    result = gaussian_filter(result, sigma=0.8)
-
-    # Normalize to [0, 1]
-    max_val = result.max()
-    if max_val > 0:
-        result = result / max_val
+    # Normalize to [0, 1] — must match training exactly (training uses /255.0)
+    result = result / 255.0
 
     # Save the processed image for visualization (before deskew)
     processed_img = (result * 255).astype(np.uint8)
